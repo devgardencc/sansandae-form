@@ -70,18 +70,11 @@ function Form() {
                         <p className="mb-3 text-[11px] font-bold uppercase tracking-[.13em] text-[#d73428]">
                             Регистрация на восхождение
                         </p>
-                        <h2 className="font-display text-[clamp(27px,3vw,36px)] font-semibold leading-[1.08] tracking-[-.04em]">
-                            Регистрация
-                        </h2>
-                        <p className="mt-3 text-sm leading-[1.55] text-[#77736b]">
-                            Информация о маршруте уже задана. Заполните контакты
-                            для связи с организатором.
-                        </p>
                     </header>
 
                     <fieldset className={fieldsetClass}>
                         <legend className={legendClass}>О маршруте</legend>
-                        <dl className="m-0 grid gap-0 bg-[#f4f0e8] px-4 py-1">
+                        <dl className="m-0 grid gap-0">
                             <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
                                 <dt className="text-xs text-[#77736b]">Гора</dt>
                                 <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
