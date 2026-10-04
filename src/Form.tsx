@@ -1,16 +1,60 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
+import { decompressFromEncodedURIComponent } from 'lz-string';
 import type { FormValues } from './types';
 import kakaoLogo from './assets/kakao.png';
 
-const routeInfo = {
-    mountain: '마니산',
-    address: '경기 김포시 김포한강9로76번길 63 아스타프라자 110호',
-    addressLink: 'https://place.map.kakao.com/27603053',
-    time: '2026-12-31T11:00',
-    spot: '인천 강화군 화도면 해안남로1170번길 20',
-    spotLink: 'https://place.map.kakao.com/23916795',
+type RouteInfo = Pick<FormValues, 'mountain' | 'address' | 'time' | 'spot'> & {
+    addressLink: string;
+    spotLink: string;
 };
+
+const defaultRouteInfo: RouteInfo = {
+    mountain: '',
+    address: '',
+    addressLink: '',
+    time: '',
+    spot: '',
+    spotLink: '',
+};
+
+function readRouteInfoFromUrl(): RouteInfo {
+    const encoded = new URLSearchParams(window.location.search).get('id');
+    if (!encoded) return defaultRouteInfo;
+
+    try {
+        const json = decompressFromEncodedURIComponent(encoded);
+        if (!json) return defaultRouteInfo;
+
+        const data: unknown = JSON.parse(json);
+        if (typeof data !== 'object' || data === null) return defaultRouteInfo;
+
+        const candidate = data as Partial<Record<keyof RouteInfo, unknown>>;
+        const isSafeKakaoUrl = (value: unknown): value is string => {
+            if (typeof value !== 'string') return false;
+            try {
+                const url = new URL(value);
+                return url.protocol === 'https:' &&
+                    (url.hostname === 'kakao.com' || url.hostname.endsWith('.kakao.com'));
+            } catch {
+                return false;
+            }
+        };
+
+        return {
+            mountain: typeof candidate.mountain === 'string' ? candidate.mountain : defaultRouteInfo.mountain,
+            address: typeof candidate.address === 'string' ? candidate.address : defaultRouteInfo.address,
+            time: typeof candidate.time === 'string' ? candidate.time : defaultRouteInfo.time,
+            spot: typeof candidate.spot === 'string' ? candidate.spot : defaultRouteInfo.spot,
+            addressLink: isSafeKakaoUrl(candidate.addressLink) ? candidate.addressLink : defaultRouteInfo.addressLink,
+            spotLink: isSafeKakaoUrl(candidate.spotLink) ? candidate.spotLink : defaultRouteInfo.spotLink,
+        };
+    } catch {
+        return defaultRouteInfo;
+    }
+}
+
+const routeInfo = readRouteInfoFromUrl();
 
 const initialValues: FormValues = {
     mountain: routeInfo.mountain,
