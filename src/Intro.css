@@ -1,0 +1,38 @@
+.route-note {
+    display: grid;
+    grid-template-columns: 34px 1fr 30px;
+    align-items: center;
+    gap: 13px;
+    border-top: 1px solid var(--rule);
+    margin-top: 35px;
+    padding-top: 14px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+.intro-panel {
+    min-height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+}
+.route-arrow {
+    justify-self: end;
+    color: var(--red);
+    font-size: 23px;
+}
+@media (max-width: 850px) {
+    .intro-panel {
+        min-height: auto;
+        position: static;
+    }
+    .intro-copy {
+        margin-top: 0;
+    }
+    .route-note {
+        margin-bottom: 48px;
+    }
+}
