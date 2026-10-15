@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { decompressFromEncodedURIComponent } from 'lz-string';
-import type { FormValues } from './types';
+import type { FormValues, RegisterHikeRequest } from './types';
+import { registerHike } from './core';
 import kakaoLogo from './assets/kakao.png';
 
 type RouteInfo = Pick<FormValues, 'mountain' | 'address' | 'time' | 'spot'> & {
@@ -34,20 +35,39 @@ function readRouteInfoFromUrl(): RouteInfo {
             if (typeof value !== 'string') return false;
             try {
                 const url = new URL(value);
-                return url.protocol === 'https:' &&
-                    (url.hostname === 'kakao.com' || url.hostname.endsWith('.kakao.com'));
+                return (
+                    url.protocol === 'https:' &&
+                    (url.hostname === 'kakao.com' ||
+                        url.hostname.endsWith('.kakao.com'))
+                );
             } catch {
                 return false;
             }
         };
 
         return {
-            mountain: typeof candidate.mountain === 'string' ? candidate.mountain : defaultRouteInfo.mountain,
-            address: typeof candidate.address === 'string' ? candidate.address : defaultRouteInfo.address,
-            time: typeof candidate.time === 'string' ? candidate.time : defaultRouteInfo.time,
-            spot: typeof candidate.spot === 'string' ? candidate.spot : defaultRouteInfo.spot,
-            addressLink: isSafeKakaoUrl(candidate.addressLink) ? candidate.addressLink : defaultRouteInfo.addressLink,
-            spotLink: isSafeKakaoUrl(candidate.spotLink) ? candidate.spotLink : defaultRouteInfo.spotLink,
+            mountain:
+                typeof candidate.mountain === 'string'
+                    ? candidate.mountain
+                    : defaultRouteInfo.mountain,
+            address:
+                typeof candidate.address === 'string'
+                    ? candidate.address
+                    : defaultRouteInfo.address,
+            time:
+                typeof candidate.time === 'string'
+                    ? candidate.time
+                    : defaultRouteInfo.time,
+            spot:
+                typeof candidate.spot === 'string'
+                    ? candidate.spot
+                    : defaultRouteInfo.spot,
+            addressLink: isSafeKakaoUrl(candidate.addressLink)
+                ? candidate.addressLink
+                : defaultRouteInfo.addressLink,
+            spotLink: isSafeKakaoUrl(candidate.spotLink)
+                ? candidate.spotLink
+                : defaultRouteInfo.spotLink,
         };
     } catch {
         return defaultRouteInfo;
@@ -87,6 +107,8 @@ function Form() {
     const [status, setStatus] = useState<'editing' | 'success' | 'error'>(
         'editing'
     );
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
@@ -96,13 +118,34 @@ function Form() {
         }));
     };
 
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setIsLoading(true);
+        setErrorMessage('');
+
+        const dateOnly = values.time ? values.time.split('T')[0] : '';
+        const payload: RegisterHikeRequest = {
+            name: values.name.trim(),
+            phone: values.phone.trim(),
+            tg: values.telegram.trim(),
+            club: values.club === 'yes',
+            photo: values.photo,
+            mountain: values.mountain.trim(),
+            date: dateOnly,
+        };
+
         try {
-            console.info('Заявка на восхождение:', { ...values });
+            await registerHike(payload);
             setStatus('success');
-        } catch {
+        } catch (error) {
+            setErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : 'Произошла непредвиденная ошибка.'
+            );
             setStatus('error');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -305,21 +348,18 @@ function Form() {
                     </fieldset>
 
                     <button
-                        className="mt-[25px] flex min-h-[55px] w-full cursor-pointer items-center justify-between border border-[#d73428] bg-[#d73428] px-[18px] text-left text-xs font-bold uppercase tracking-[.08em] text-white transition hover:border-[#171715] hover:bg-[#171715] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#171715]"
+                        className="mt-[25px] flex min-h-[55px] w-full cursor-pointer items-center justify-between border border-[#d73428] bg-[#d73428] px-[18px] text-left text-xs font-bold uppercase tracking-[.08em] text-white transition hover:border-[#171715] hover:bg-[#171715] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#171715] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-[#d73428] disabled:hover:bg-[#d73428]"
                         type="submit"
+                        disabled={isLoading}
                     >
-                        Отправить заявку{' '}
+                        {isLoading ? 'Отправка...' : 'Отправить заявку'}{' '}
                         <span
                             className="text-xl font-normal"
                             aria-hidden="true"
                         >
-                            ↗
+                            {isLoading ? '⏳' : '↗'}
                         </span>
                     </button>
-                    <p className="mt-[13px] text-center text-[11px] leading-[1.5] text-[#77736b]">
-                        Пока заявка не отправляется на сервер: данные появятся в
-                        консоли браузера.
-                    </p>
                 </form>
             ) : (
                 <section
@@ -340,13 +380,14 @@ function Form() {
                     </p>
                     <h2 className="font-display text-[clamp(30px,4vw,42px)] font-semibold leading-[1.05] tracking-[-.04em]">
                         {status === 'success'
-                            ? 'Данные готовы'
+                            ? 'Данные переданы'
                             : 'Попробуйте ещё раз'}
                     </h2>
                     <p className="mt-[14px] text-sm leading-[1.6] text-[#77736b]">
                         {status === 'success'
-                            ? 'Заявка передана организатору. Сейчас данные только выведены в консоль браузера — API ещё не подключено.'
-                            : 'Произошла ошибка. Пожалуйста, попробуйте снова через 3 секунды.'}
+                            ? 'Заявка передана организаторам восхождения. Скоро с вами свяжутся!'
+                            : errorMessage ||
+                              'Произошла ошибка при отправке заявки. Пожалуйста, попробуйте снова.'}
                     </p>
                     {status === 'error' && (
                         <button

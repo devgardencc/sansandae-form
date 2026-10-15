@@ -9,3 +9,19 @@ export interface FormValues {
     club: '' | 'yes' | 'no';
     photo: boolean;
 }
+
+export interface RegisterHikeRequest {
+    name: string;
+    phone: string;
+    tg: string;
+    club: boolean;
+    photo: boolean;
+    mountain: string;
+    date: string;
+}
+
+export interface RegisterHikeResponse {
+    name: string;
+    created_at?: string;
+    [key: string]: unknown;
+}
