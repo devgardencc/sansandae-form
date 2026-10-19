@@ -2,47 +2,58 @@
 @import 'tailwindcss';
 
 @theme {
-    --font-sans: 'DM Sans', Arial, sans-serif;
-    --font-display: 'Space Grotesk', Arial, sans-serif;
+  --font-sans: 'DM Sans', Arial, sans-serif;
+  --font-display: 'Space Grotesk', Arial, sans-serif;
+  --color-ink: #171715;
+  --color-muted: #625f58;
+  --color-subtle: #746f65;
+  --color-line: #d9d3c8;
+  --color-canvas: #f4f0e8;
+  --color-paper: #fbfaf7;
+  --color-panel: #eee9df;
+  --color-accent: #c52f24;
+  --color-accent-soft: #f5d9d3;
+  --shadow-paper: 18px 18px 0 rgb(217 211 200 / 48%);
+  --shadow-paper-mobile: 10px 10px 0 rgb(217 211 200 / 48%);
 }
 
 @layer base {
-    :root {
-        color-scheme: light;
-    }
-    * {
-        box-sizing: border-box;
-    }
-    html {
-        scroll-behavior: smooth;
-    }
-    body {
-        margin: 0;
-        background: #f4f0e8;
-        color: #171715;
-        font-family: var(--font-sans);
-        -webkit-font-smoothing: antialiased;
-    }
-    body::before {
-        position: fixed;
-        inset: 0;
-        z-index: -1;
-        pointer-events: none;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E");
-        content: '';
-        opacity: 0.18;
-    }
-    button,
-    input {
-        font: inherit;
-    }
-    #root {
-        min-height: 100svh;
-    }
+  :root {
+    color-scheme: light;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E");
+    content: '';
+    opacity: 0.18;
+  }
+  button,
+  input {
+    font: inherit;
+  }
+  #root {
+    min-height: 100svh;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    html {
-        scroll-behavior: auto;
-    }
+  html {
+    scroll-behavior: auto;
+  }
 }
