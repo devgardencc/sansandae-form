@@ -1,92 +1,10 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { decompressFromEncodedURIComponent } from 'lz-string';
 import type { FormValues, RegisterHikeRequest } from './types';
 import { registerHike } from './core';
-import kakaoLogo from './assets/kakao.png';
-
-type RouteInfo = Pick<FormValues, 'mountain' | 'address' | 'time' | 'spot'> & {
-    addressLink: string;
-    spotLink: string;
-};
-
-const defaultRouteInfo: RouteInfo = {
-    mountain: '',
-    address: '',
-    addressLink: '',
-    time: '',
-    spot: '',
-    spotLink: '',
-};
-
-function readRouteInfoFromUrl(): RouteInfo {
-    const encoded = new URLSearchParams(window.location.search).get('id');
-    if (!encoded) return defaultRouteInfo;
-
-    try {
-        const json = decompressFromEncodedURIComponent(encoded);
-        if (!json) return defaultRouteInfo;
-
-        const data: unknown = JSON.parse(json);
-        if (typeof data !== 'object' || data === null) return defaultRouteInfo;
-
-        const candidate = data as Partial<Record<keyof RouteInfo, unknown>>;
-        const isSafeKakaoUrl = (value: unknown): value is string => {
-            if (typeof value !== 'string') return false;
-            try {
-                const url = new URL(value);
-                return (
-                    url.protocol === 'https:' &&
-                    (url.hostname === 'kakao.com' ||
-                        url.hostname.endsWith('.kakao.com'))
-                );
-            } catch {
-                return false;
-            }
-        };
-
-        return {
-            mountain:
-                typeof candidate.mountain === 'string'
-                    ? candidate.mountain
-                    : defaultRouteInfo.mountain,
-            address:
-                typeof candidate.address === 'string'
-                    ? candidate.address
-                    : defaultRouteInfo.address,
-            time:
-                typeof candidate.time === 'string'
-                    ? candidate.time
-                    : defaultRouteInfo.time,
-            spot:
-                typeof candidate.spot === 'string'
-                    ? candidate.spot
-                    : defaultRouteInfo.spot,
-            addressLink: isSafeKakaoUrl(candidate.addressLink)
-                ? candidate.addressLink
-                : defaultRouteInfo.addressLink,
-            spotLink: isSafeKakaoUrl(candidate.spotLink)
-                ? candidate.spotLink
-                : defaultRouteInfo.spotLink,
-        };
-    } catch {
-        return defaultRouteInfo;
-    }
-}
-
-const routeInfo = readRouteInfoFromUrl();
-
-const initialValues: FormValues = {
-    mountain: routeInfo.mountain,
-    address: routeInfo.address,
-    time: routeInfo.time,
-    spot: routeInfo.spot,
-    name: '',
-    phone: '',
-    telegram: '',
-    club: '',
-    photo: false,
-};
+import RouteSummary from './RouteSummary';
+import SubmissionStatus from './SubmissionStatus';
+import { getInitialFormValues, readRouteInfoFromUrl } from './routeInfo';
 
 const fieldsetClass =
     'm-0 min-w-0 border-0 border-b border-solid border-[#d9d3c8] p-0 pb-[27px] [&+fieldset]:pt-[27px]';
@@ -99,11 +17,14 @@ const inputClass =
     'h-[47px] w-full min-w-0 rounded-[2px] border border-[#d9d3c8] bg-white px-3 text-sm text-[#171715] outline-none transition placeholder:text-[#aaa69d] focus-visible:border-[#171715] focus-visible:ring-[3px] focus-visible:ring-[#f5d9d3]';
 const rowClass =
     'grid grid-cols-2 gap-4 max-[560px]:grid-cols-1 max-[560px]:gap-0';
-const mapLinkClass =
-    'mt-[7px] flex w-fit items-center gap-[5px] text-[11px] font-semibold text-[#77736b] no-underline transition hover:text-[#d73428] focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[#d73428]';
 
 function Form() {
-    const [values, setValues] = useState<FormValues>(initialValues);
+    const [routeInfo] = useState(() =>
+        readRouteInfoFromUrl(window.location.search)
+    );
+    const [values, setValues] = useState<FormValues>(() =>
+        getInitialFormValues(routeInfo)
+    );
     const [status, setStatus] = useState<'editing' | 'success' | 'error'>(
         'editing'
     );
@@ -159,73 +80,7 @@ function Form() {
                         </p>
                     </header>
 
-                    <fieldset className={fieldsetClass}>
-                        <legend className={legendClass}>О маршруте</legend>
-                        <dl className="m-0 grid gap-0">
-                            <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
-                                <dt className="text-xs text-[#77736b]">Гора</dt>
-                                <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
-                                    {values.mountain}
-                                </dd>
-                            </div>
-                            <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
-                                <dt className="text-xs text-[#77736b]">
-                                    Адрес горы
-                                </dt>
-                                <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
-                                    {values.address}
-                                    <a
-                                        className={mapLinkClass}
-                                        href={routeInfo.addressLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        aria-label="Открыть адрес организатора в Kakao Map"
-                                    >
-                                        <img
-                                            className="block h-[36px] w-[72px] shrink-0 object-contain"
-                                            src={kakaoLogo}
-                                            alt=""
-                                        />
-                                    </a>
-                                </dd>
-                            </div>
-                            <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
-                                <dt className="text-xs text-[#77736b]">
-                                    Дата и время сбора
-                                </dt>
-                                <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
-                                    {new Date(values.time).toLocaleString(
-                                        'ru-RU',
-                                        {
-                                            dateStyle: 'medium',
-                                            timeStyle: 'short',
-                                        }
-                                    )}
-                                </dd>
-                            </div>
-                            <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
-                                <dt className="text-xs text-[#77736b]">
-                                    Точка сбора
-                                </dt>
-                                <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
-                                    {values.spot}
-                                    <a
-                                        className={mapLinkClass}
-                                        href={routeInfo.spotLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        aria-label="Открыть точку сбора в Kakao Map"
-                                    >
-                                        <img
-                                            className="block h-[36px] w-[72px] shrink-0 object-contain"
-                                            src={kakaoLogo}
-                                            alt=""
-                                        />
-                                    </a>
-                                </dd>
-                            </div>
-                        </dl>
-                    </fieldset>
+                    <RouteSummary values={values} routeInfo={routeInfo} />
 
                     <fieldset className={fieldsetClass}>
                         <legend className={legendClass}>Ваши контакты</legend>
@@ -242,7 +97,7 @@ function Form() {
                                 onChange={handleChange}
                                 required
                                 autoComplete="name"
-                                placeholder="Как к вам обращаться"
+                                placeholder="HONG SAMPLE"
                             />
                         </div>
                         <div className={rowClass}>
@@ -261,7 +116,7 @@ function Form() {
                                     required
                                     autoComplete="tel"
                                     inputMode="tel"
-                                    placeholder="+82 10 1234 5678"
+                                    placeholder="01012345678"
                                 />
                             </div>
                             <div className={fieldClass}>
@@ -362,43 +217,11 @@ function Form() {
                     </button>
                 </form>
             ) : (
-                <section
-                    className="mx-auto max-w-[500px] py-[clamp(28px,5vw,58px)] text-center"
-                    role="status"
-                    aria-live="polite"
-                >
-                    <div
-                        className={`mx-auto mb-[22px] grid h-[58px] w-[58px] place-items-center rounded-full text-[27px] text-white ${status === 'success' ? 'bg-[#d73428]' : 'bg-[#171715]'}`}
-                        aria-hidden="true"
-                    >
-                        {status === 'success' ? '✓' : '!'}
-                    </div>
-                    <p className="mb-[10px] text-[11px] font-bold uppercase tracking-[.13em] text-[#d73428]">
-                        {status === 'success'
-                            ? 'Заявка отправлена'
-                            : 'Не удалось отправить'}
-                    </p>
-                    <h2 className="font-display text-[clamp(30px,4vw,42px)] font-semibold leading-[1.05] tracking-[-.04em]">
-                        {status === 'success'
-                            ? 'Данные переданы'
-                            : 'Попробуйте ещё раз'}
-                    </h2>
-                    <p className="mt-[14px] text-sm leading-[1.6] text-[#77736b]">
-                        {status === 'success'
-                            ? 'Заявка передана организаторам восхождения. Скоро с вами свяжутся!'
-                            : errorMessage ||
-                              'Произошла ошибка при отправке заявки. Пожалуйста, попробуйте снова.'}
-                    </p>
-                    {status === 'error' && (
-                        <button
-                            className="mt-[25px] min-h-12 cursor-pointer border border-[#d9d3c8] bg-transparent px-5 text-xs font-semibold text-[#171715] hover:border-[#171715] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#171715]"
-                            type="button"
-                            onClick={() => setStatus('editing')}
-                        >
-                            Вернуться к форме
-                        </button>
-                    )}
-                </section>
+                <SubmissionStatus
+                    status={status}
+                    errorMessage={errorMessage}
+                    onReturn={() => setStatus('editing')}
+                />
             )}
         </div>
     );
