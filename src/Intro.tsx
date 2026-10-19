@@ -3,14 +3,14 @@ import logo from './assets/logo.png';
 function Intro() {
     return (
         <section
-            className="sticky top-0 flex min-h-[calc(100vh-100px)] flex-col max-[850px]:static max-[850px]:min-h-0 mb-8"
+            className="sticky top-[42px] mb-8 flex min-h-[calc(100vh-100px)] flex-col max-[850px]:static max-[850px]:mb-7 max-[850px]:min-h-0"
             aria-labelledby="page-title"
         >
             <div className="flex justify-between gap-5 text-[10px] font-bold tracking-[.18em] text-[#77736b] max-[480px]:text-[8px]">
                 <span>SUMMIT FORM</span>
                 <span>SANSANDAE</span>
             </div>
-            <div className="relative mx-auto my-[clamp(42px,8vh,86px)] mb-[22px] grid aspect-square w-full max-w-[330px] place-items-center max-[850px]:my-[46px] max-[850px]:mb-[26px] max-[850px]:max-w-[260px]">
+            <div className="relative mx-auto my-[clamp(42px,8vh,86px)] mb-[22px] grid aspect-square w-full max-w-[330px] place-items-center max-[850px]:my-7 max-[850px]:mb-5 max-[850px]:max-w-[210px]">
                 <div
                     aria-hidden="true"
                     className="absolute h-[86%] w-[86%] rotate-[-17deg] rounded-full border border-[#d9d3c8]"

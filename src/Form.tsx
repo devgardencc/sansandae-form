@@ -75,8 +75,17 @@ function Form() {
             {status === 'editing' ? (
                 <form className="flex flex-col" onSubmit={handleSubmit}>
                     <header className="mb-[30px]">
-                        <p className="mb-3 text-[11px] font-bold uppercase tracking-[.13em] text-[#d73428]">
+                        <p className="mb-3 text-[10px] font-bold uppercase tracking-[.16em] text-[#d73428]">
                             Регистрация на восхождение
+                        </p>
+                        <h2
+                            id="form-title"
+                            className="font-display text-[clamp(28px,3.2vw,38px)] font-semibold leading-[1.05] tracking-[-.045em]"
+                        >
+                            Давайте знакомиться
+                        </h2>
+                        <p className="mt-3 max-w-[38ch] text-[13px] leading-[1.6] text-[#625f58]">
+                            Оставьте контакты, чтобы организаторы могли подтвердить ваше участие.
                         </p>
                     </header>
 
@@ -208,12 +217,16 @@ function Form() {
                         disabled={isLoading}
                     >
                         {isLoading ? 'Отправка...' : 'Отправить заявку'}{' '}
-                        <span
-                            className="text-xl font-normal"
-                            aria-hidden="true"
-                        >
-                            {isLoading ? '⏳' : '↗'}
-                        </span>
+                        {isLoading ? (
+                            <span
+                                className="h-[18px] w-[18px] animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none"
+                                aria-hidden="true"
+                            />
+                        ) : (
+                            <span className="text-xl font-normal" aria-hidden="true">
+                                ↗
+                            </span>
+                        )}
                     </button>
                 </form>
             ) : (

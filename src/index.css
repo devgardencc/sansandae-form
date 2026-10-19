@@ -40,3 +40,9 @@
         min-height: 100svh;
     }
 }
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}

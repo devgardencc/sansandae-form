@@ -33,8 +33,8 @@ function MapLink({ href, label }: { href: string; label: string }) {
 
 function RouteSummary({ values, routeInfo }: Props) {
     return (
-        <fieldset className="m-0 min-w-0 border-0 border-b border-solid border-[#d9d3c8] p-0 pb-[27px] [&+fieldset]:pt-[27px]">
-            <legend className="w-full pb-[18px] text-[11px] font-bold uppercase tracking-[.14em] text-[#171715]">
+        <fieldset className="m-0 min-w-0 border-0 border-l-2 border-solid border-l-[#d73428] bg-[#f4f0e8]/70 p-[16px_18px_13px] [&+fieldset]:mt-[27px]">
+            <legend className="w-full pb-[12px] text-[10px] font-bold uppercase tracking-[.15em] text-[#d73428]">
                 О маршруте
             </legend>
             <dl className="m-0 grid gap-0">
