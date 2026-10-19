@@ -1,407 +1,235 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { decompressFromEncodedURIComponent } from 'lz-string';
 import type { FormValues, RegisterHikeRequest } from './types';
 import { registerHike } from './core';
-import kakaoLogo from './assets/kakao.png';
-
-type RouteInfo = Pick<FormValues, 'mountain' | 'address' | 'time' | 'spot'> & {
-    addressLink: string;
-    spotLink: string;
-};
-
-const defaultRouteInfo: RouteInfo = {
-    mountain: '',
-    address: '',
-    addressLink: '',
-    time: '',
-    spot: '',
-    spotLink: '',
-};
-
-function readRouteInfoFromUrl(): RouteInfo {
-    const encoded = new URLSearchParams(window.location.search).get('id');
-    if (!encoded) return defaultRouteInfo;
-
-    try {
-        const json = decompressFromEncodedURIComponent(encoded);
-        if (!json) return defaultRouteInfo;
-
-        const data: unknown = JSON.parse(json);
-        if (typeof data !== 'object' || data === null) return defaultRouteInfo;
-
-        const candidate = data as Partial<Record<keyof RouteInfo, unknown>>;
-        const isSafeKakaoUrl = (value: unknown): value is string => {
-            if (typeof value !== 'string') return false;
-            try {
-                const url = new URL(value);
-                return (
-                    url.protocol === 'https:' &&
-                    (url.hostname === 'kakao.com' ||
-                        url.hostname.endsWith('.kakao.com'))
-                );
-            } catch {
-                return false;
-            }
-        };
-
-        return {
-            mountain:
-                typeof candidate.mountain === 'string'
-                    ? candidate.mountain
-                    : defaultRouteInfo.mountain,
-            address:
-                typeof candidate.address === 'string'
-                    ? candidate.address
-                    : defaultRouteInfo.address,
-            time:
-                typeof candidate.time === 'string'
-                    ? candidate.time
-                    : defaultRouteInfo.time,
-            spot:
-                typeof candidate.spot === 'string'
-                    ? candidate.spot
-                    : defaultRouteInfo.spot,
-            addressLink: isSafeKakaoUrl(candidate.addressLink)
-                ? candidate.addressLink
-                : defaultRouteInfo.addressLink,
-            spotLink: isSafeKakaoUrl(candidate.spotLink)
-                ? candidate.spotLink
-                : defaultRouteInfo.spotLink,
-        };
-    } catch {
-        return defaultRouteInfo;
-    }
-}
-
-const routeInfo = readRouteInfoFromUrl();
-
-const initialValues: FormValues = {
-    mountain: routeInfo.mountain,
-    address: routeInfo.address,
-    time: routeInfo.time,
-    spot: routeInfo.spot,
-    name: '',
-    phone: '',
-    telegram: '',
-    club: '',
-    photo: false,
-};
+import RouteSummary from './RouteSummary';
+import SubmissionStatus from './SubmissionStatus';
+import { getInitialFormValues, readRouteInfoFromUrl } from './routeInfo';
 
 const fieldsetClass =
-    'm-0 min-w-0 border-0 border-b border-solid border-[#d9d3c8] p-0 pb-[27px] [&+fieldset]:pt-[27px]';
+  'm-0 min-w-0 border-0 border-b border-solid border-line p-0 pb-[26px] [&+fieldset]:pt-[26px]';
 const legendClass =
-    'w-full pb-[18px] text-[11px] font-bold uppercase tracking-[.14em] text-[#171715]';
-const fieldClass = 'mb-[18px] min-w-0 last:mb-0';
+  'w-full pb-4 text-xs font-bold uppercase tracking-[.14em] text-ink';
+const fieldClass = 'mb-5 min-w-0 last:mb-0';
 const labelClass =
-    'mb-2 block text-[12px] font-semibold text-[#77736b] [&>span]:text-[#d73428]';
+  'mb-2 block text-[13px] font-semibold text-muted [&>span]:text-accent';
 const inputClass =
-    'h-[47px] w-full min-w-0 rounded-[2px] border border-[#d9d3c8] bg-white px-3 text-sm text-[#171715] outline-none transition placeholder:text-[#aaa69d] focus-visible:border-[#171715] focus-visible:ring-[3px] focus-visible:ring-[#f5d9d3]';
+  'h-[50px] w-full min-w-0 rounded-[2px] border border-line bg-white px-3 text-base text-ink outline-none transition-colors duration-200 placeholder:text-subtle focus-visible:border-ink focus-visible:ring-[3px] focus-visible:ring-accent-soft';
 const rowClass =
-    'grid grid-cols-2 gap-4 max-[560px]:grid-cols-1 max-[560px]:gap-0';
-const mapLinkClass =
-    'mt-[7px] flex w-fit items-center gap-[5px] text-[11px] font-semibold text-[#77736b] no-underline transition hover:text-[#d73428] focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[#d73428]';
+  'grid grid-cols-2 gap-4 max-[560px]:grid-cols-1 max-[560px]:gap-0';
 
 function Form() {
-    const [values, setValues] = useState<FormValues>(initialValues);
-    const [status, setStatus] = useState<'editing' | 'success' | 'error'>(
-        'editing'
-    );
-    const [isLoading, setIsLoading] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
+  const [routeInfo] = useState(() =>
+    readRouteInfoFromUrl(window.location.search)
+  );
+  const [values, setValues] = useState<FormValues>(() =>
+    getInitialFormValues(routeInfo)
+  );
+  const [status, setStatus] = useState<'editing' | 'success' | 'error'>(
+    'editing'
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type, checked } = e.target;
-        setValues((previous) => ({
-            ...previous,
-            [name]: type === 'checkbox' ? checked : value,
-        }));
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setValues((previous) => ({
+      ...previous,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setErrorMessage('');
+
+    const dateOnly = values.time ? values.time.split('T')[0] : '';
+    const payload: RegisterHikeRequest = {
+      name: values.name.trim(),
+      phone: values.phone.trim(),
+      tg: values.telegram.trim(),
+      club: values.club === 'yes',
+      photo: values.photo,
+      mountain: values.mountain.trim(),
+      date: dateOnly,
     };
 
-    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setErrorMessage('');
+    try {
+      await registerHike(payload);
+      setStatus('success');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Произошла непредвиденная ошибка.'
+      );
+      setStatus('error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        const dateOnly = values.time ? values.time.split('T')[0] : '';
-        const payload: RegisterHikeRequest = {
-            name: values.name.trim(),
-            phone: values.phone.trim(),
-            tg: values.telegram.trim(),
-            club: values.club === 'yes',
-            photo: values.photo,
-            mountain: values.mountain.trim(),
-            date: dateOnly,
-        };
+  return (
+    <div className="w-full text-ink">
+      {status === 'editing' ? (
+        <form className="flex flex-col" onSubmit={handleSubmit}>
+          <header className="mb-7">
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-[.16em] text-accent">
+              Регистрация на восхождение
+            </p>
+            <h2
+              id="form-title"
+              className="font-display text-[clamp(28px,3.2vw,38px)] font-semibold leading-[1.05] tracking-[-.045em]"
+            >
+              Давайте знакомиться
+            </h2>
+            <p className="mt-3 max-w-[38ch] text-sm leading-[1.65] text-muted">
+              Оставьте контакты, чтобы организаторы могли подтвердить ваше
+              участие.
+            </p>
+          </header>
 
-        try {
-            await registerHike(payload);
-            setStatus('success');
-        } catch (error) {
-            setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : 'Произошла непредвиденная ошибка.'
-            );
-            setStatus('error');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+          <RouteSummary values={values} routeInfo={routeInfo} />
 
-    return (
-        <div className="w-full text-[#171715]">
-            {status === 'editing' ? (
-                <form className="flex flex-col" onSubmit={handleSubmit}>
-                    <header className="mb-[30px]">
-                        <p className="mb-3 text-[11px] font-bold uppercase tracking-[.13em] text-[#d73428]">
-                            Регистрация на восхождение
-                        </p>
-                    </header>
+          <fieldset className={fieldsetClass}>
+            <legend className={legendClass}>Ваши контакты</legend>
+            <div className={fieldClass}>
+              <label className={labelClass} htmlFor="fullName">
+                Имя и фамилия <span aria-hidden="true">*</span>
+              </label>
+              <input
+                className={inputClass}
+                type="text"
+                id="fullName"
+                name="name"
+                value={values.name}
+                onChange={handleChange}
+                required
+                autoComplete="name"
+                placeholder="HONG SAMPLE"
+              />
+            </div>
+            <div className={rowClass}>
+              <div className={fieldClass}>
+                <label className={labelClass} htmlFor="phone">
+                  Номер телефона <span aria-hidden="true">*</span>
+                </label>
+                <input
+                  className={inputClass}
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={values.phone}
+                  onChange={handleChange}
+                  required
+                  autoComplete="tel"
+                  inputMode="tel"
+                  placeholder="01012345678"
+                />
+              </div>
+              <div className={fieldClass}>
+                <label className={labelClass} htmlFor="telegram">
+                  Telegram <span aria-hidden="true">*</span>
+                </label>
+                <input
+                  className={inputClass}
+                  type="text"
+                  id="telegram"
+                  name="telegram"
+                  value={values.telegram}
+                  onChange={handleChange}
+                  required
+                  autoComplete="off"
+                  placeholder="@username"
+                />
+              </div>
+            </div>
+          </fieldset>
 
-                    <fieldset className={fieldsetClass}>
-                        <legend className={legendClass}>О маршруте</legend>
-                        <dl className="m-0 grid gap-0">
-                            <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
-                                <dt className="text-xs text-[#77736b]">Гора</dt>
-                                <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
-                                    {values.mountain}
-                                </dd>
-                            </div>
-                            <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
-                                <dt className="text-xs text-[#77736b]">
-                                    Адрес горы
-                                </dt>
-                                <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
-                                    {values.address}
-                                    <a
-                                        className={mapLinkClass}
-                                        href={routeInfo.addressLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        aria-label="Открыть адрес организатора в Kakao Map"
-                                    >
-                                        <img
-                                            className="block h-[36px] w-[72px] shrink-0 object-contain"
-                                            src={kakaoLogo}
-                                            alt=""
-                                        />
-                                    </a>
-                                </dd>
-                            </div>
-                            <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
-                                <dt className="text-xs text-[#77736b]">
-                                    Дата и время сбора
-                                </dt>
-                                <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
-                                    {new Date(values.time).toLocaleString(
-                                        'ru-RU',
-                                        {
-                                            dateStyle: 'medium',
-                                            timeStyle: 'short',
-                                        }
-                                    )}
-                                </dd>
-                            </div>
-                            <div className="grid grid-cols-[minmax(125px,.7fr)_1.3fr] gap-[14px] border-b border-solid border-[#d9d3c8] py-[11px] last:border-b-0 max-[560px]:grid-cols-1 max-[560px]:gap-1">
-                                <dt className="text-xs text-[#77736b]">
-                                    Точка сбора
-                                </dt>
-                                <dd className="m-0 wrap-anywhere text-[13px] font-semibold">
-                                    {values.spot}
-                                    <a
-                                        className={mapLinkClass}
-                                        href={routeInfo.spotLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        aria-label="Открыть точку сбора в Kakao Map"
-                                    >
-                                        <img
-                                            className="block h-[36px] w-[72px] shrink-0 object-contain"
-                                            src={kakaoLogo}
-                                            alt=""
-                                        />
-                                    </a>
-                                </dd>
-                            </div>
-                        </dl>
-                    </fieldset>
+          <fieldset className={fieldsetClass}>
+            <legend className={legendClass}>Дополнительно</legend>
+            <div className={fieldClass}>
+              <span className={`${labelClass} mb-2`} id="club-label">
+                Состоите в хайкинг-клубе? <span aria-hidden="true">*</span>
+              </span>
+              <div
+                className="grid grid-cols-2 gap-2"
+                role="radiogroup"
+                aria-labelledby="club-label"
+              >
+                <label className="relative m-0 cursor-pointer">
+                  <input
+                    className="peer sr-only"
+                    type="radio"
+                    name="club"
+                    value="yes"
+                    checked={values.club === 'yes'}
+                    onChange={handleChange}
+                    required
+                  />
+                  <span className="block rounded-[2px] border border-line p-3 text-center text-sm text-muted transition-colors duration-200 hover:border-ink hover:text-ink peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white peer-checked:hover:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent">
+                    Да
+                  </span>
+                </label>
+                <label className="relative m-0 cursor-pointer">
+                  <input
+                    className="peer sr-only"
+                    type="radio"
+                    name="club"
+                    value="no"
+                    checked={values.club === 'no'}
+                    onChange={handleChange}
+                  />
+                  <span className="block rounded-[2px] border border-line p-3 text-center text-sm text-muted transition-colors duration-200 hover:border-ink hover:text-ink peer-checked:border-ink peer-checked:bg-ink peer-checked:text-white peer-checked:hover:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent">
+                    Нет
+                  </span>
+                </label>
+              </div>
+            </div>
+            <label className="mt-5 grid cursor-pointer grid-cols-[20px_1fr] items-start gap-3 text-sm leading-[1.55] text-muted">
+              <input
+                className="mt-px h-5 w-5 accent-accent"
+                type="checkbox"
+                id="photoConsent"
+                name="photo"
+                checked={values.photo}
+                onChange={handleChange}
+                required
+              />
+              <span>
+                Согласен(на) на фото- и видеосъёмку во время восхождения
+              </span>
+            </label>
+          </fieldset>
 
-                    <fieldset className={fieldsetClass}>
-                        <legend className={legendClass}>Ваши контакты</legend>
-                        <div className={fieldClass}>
-                            <label className={labelClass} htmlFor="fullName">
-                                Имя и фамилия <span aria-hidden="true">*</span>
-                            </label>
-                            <input
-                                className={inputClass}
-                                type="text"
-                                id="fullName"
-                                name="name"
-                                value={values.name}
-                                onChange={handleChange}
-                                required
-                                autoComplete="name"
-                                placeholder="Как к вам обращаться"
-                            />
-                        </div>
-                        <div className={rowClass}>
-                            <div className={fieldClass}>
-                                <label className={labelClass} htmlFor="phone">
-                                    Номер телефона{' '}
-                                    <span aria-hidden="true">*</span>
-                                </label>
-                                <input
-                                    className={inputClass}
-                                    type="tel"
-                                    id="phone"
-                                    name="phone"
-                                    value={values.phone}
-                                    onChange={handleChange}
-                                    required
-                                    autoComplete="tel"
-                                    inputMode="tel"
-                                    placeholder="+82 10 1234 5678"
-                                />
-                            </div>
-                            <div className={fieldClass}>
-                                <label
-                                    className={labelClass}
-                                    htmlFor="telegram"
-                                >
-                                    Telegram <span aria-hidden="true">*</span>
-                                </label>
-                                <input
-                                    className={inputClass}
-                                    type="text"
-                                    id="telegram"
-                                    name="telegram"
-                                    value={values.telegram}
-                                    onChange={handleChange}
-                                    required
-                                    autoComplete="off"
-                                    placeholder="@username"
-                                />
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <fieldset className={fieldsetClass}>
-                        <legend className={legendClass}>Дополнительно</legend>
-                        <div className={fieldClass}>
-                            <span
-                                className={`${labelClass} mb-2`}
-                                id="club-label"
-                            >
-                                Состоите в хайкинг-клубе?{' '}
-                                <span aria-hidden="true">*</span>
-                            </span>
-                            <div
-                                className="grid grid-cols-2 gap-2"
-                                role="radiogroup"
-                                aria-labelledby="club-label"
-                            >
-                                <label className="relative m-0 cursor-pointer">
-                                    <input
-                                        className="peer sr-only"
-                                        type="radio"
-                                        name="club"
-                                        value="yes"
-                                        checked={values.club === 'yes'}
-                                        onChange={handleChange}
-                                        required
-                                    />
-                                    <span className="block border border-[#d9d3c8] p-3 text-center text-[13px] text-[#77736b] transition peer-checked:border-[#171715] peer-checked:bg-[#171715] peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#d73428]">
-                                        Да
-                                    </span>
-                                </label>
-                                <label className="relative m-0 cursor-pointer">
-                                    <input
-                                        className="peer sr-only"
-                                        type="radio"
-                                        name="club"
-                                        value="no"
-                                        checked={values.club === 'no'}
-                                        onChange={handleChange}
-                                    />
-                                    <span className="block border border-[#d9d3c8] p-3 text-center text-[13px] text-[#77736b] transition peer-checked:border-[#171715] peer-checked:bg-[#171715] peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#d73428]">
-                                        Нет
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
-                        <label className="mt-[22px] grid cursor-pointer grid-cols-[18px_1fr] items-start gap-[10px] text-xs leading-[1.5] text-[#77736b]">
-                            <input
-                                className="mt-px h-[17px] w-[17px] accent-[#d73428]"
-                                type="checkbox"
-                                id="photoConsent"
-                                name="photo"
-                                checked={values.photo}
-                                onChange={handleChange}
-                                required
-                            />
-                            <span>
-                                Согласен(на) на фото- и видеосъёмку во время
-                                восхождения
-                            </span>
-                        </label>
-                    </fieldset>
-
-                    <button
-                        className="mt-[25px] flex min-h-[55px] w-full cursor-pointer items-center justify-between border border-[#d73428] bg-[#d73428] px-[18px] text-left text-xs font-bold uppercase tracking-[.08em] text-white transition hover:border-[#171715] hover:bg-[#171715] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#171715] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-[#d73428] disabled:hover:bg-[#d73428]"
-                        type="submit"
-                        disabled={isLoading}
-                    >
-                        {isLoading ? 'Отправка...' : 'Отправить заявку'}{' '}
-                        <span
-                            className="text-xl font-normal"
-                            aria-hidden="true"
-                        >
-                            {isLoading ? '⏳' : '↗'}
-                        </span>
-                    </button>
-                </form>
+          <button
+            className="mt-6 flex min-h-14 w-full cursor-pointer items-center justify-between rounded-[2px] border border-accent bg-accent px-5 text-left text-[13px] font-bold uppercase tracking-[.08em] text-white transition-colors duration-200 hover:border-ink hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-accent disabled:hover:bg-accent"
+            type="submit"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Отправка...' : 'Отправить заявку'}{' '}
+            {isLoading ? (
+              <span
+                className="h-[18px] w-[18px] animate-spin rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none"
+                aria-hidden="true"
+              />
             ) : (
-                <section
-                    className="mx-auto max-w-[500px] py-[clamp(28px,5vw,58px)] text-center"
-                    role="status"
-                    aria-live="polite"
-                >
-                    <div
-                        className={`mx-auto mb-[22px] grid h-[58px] w-[58px] place-items-center rounded-full text-[27px] text-white ${status === 'success' ? 'bg-[#d73428]' : 'bg-[#171715]'}`}
-                        aria-hidden="true"
-                    >
-                        {status === 'success' ? '✓' : '!'}
-                    </div>
-                    <p className="mb-[10px] text-[11px] font-bold uppercase tracking-[.13em] text-[#d73428]">
-                        {status === 'success'
-                            ? 'Заявка отправлена'
-                            : 'Не удалось отправить'}
-                    </p>
-                    <h2 className="font-display text-[clamp(30px,4vw,42px)] font-semibold leading-[1.05] tracking-[-.04em]">
-                        {status === 'success'
-                            ? 'Данные переданы'
-                            : 'Попробуйте ещё раз'}
-                    </h2>
-                    <p className="mt-[14px] text-sm leading-[1.6] text-[#77736b]">
-                        {status === 'success'
-                            ? 'Заявка передана организаторам восхождения. Скоро с вами свяжутся!'
-                            : errorMessage ||
-                              'Произошла ошибка при отправке заявки. Пожалуйста, попробуйте снова.'}
-                    </p>
-                    {status === 'error' && (
-                        <button
-                            className="mt-[25px] min-h-12 cursor-pointer border border-[#d9d3c8] bg-transparent px-5 text-xs font-semibold text-[#171715] hover:border-[#171715] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#171715]"
-                            type="button"
-                            onClick={() => setStatus('editing')}
-                        >
-                            Вернуться к форме
-                        </button>
-                    )}
-                </section>
+              <span className="text-xl font-normal" aria-hidden="true">
+                ↗
+              </span>
             )}
-        </div>
-    );
+          </button>
+        </form>
+      ) : (
+        <SubmissionStatus
+          status={status}
+          errorMessage={errorMessage}
+          onReturn={() => setStatus('editing')}
+        />
+      )}
+    </div>
+  );
 }
 
 export default Form;
